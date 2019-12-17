@@ -23,8 +23,9 @@ func HandlePost(w http.ResponseWriter, r *http.Request) {
 	// topic := os.Getenv("KAFKA_TOPIC")
 	kafkaURL := "localhost:29092"
 	topic := "user-topic"
-	conn := getKafkaWriter(kafkaURL, topic)
-	defer conn.Close()
+	// conn := getKafkaWriter(kafkaURL, topic)
+	// defer conn.Close()
+	newWriter := getKafkaWriter(kafkaURL, topic)
 
 	var user User
 	_ = json.NewDecoder(r.Body).Decode(&user)
@@ -39,7 +40,10 @@ func HandlePost(w http.ResponseWriter, r *http.Request) {
 		Value: v,
 	}
 
-	_, err = conn.WriteMessages(msg)
+	// _, err = conn.WriteMessages(msg)
+	err = newWriter.WriteMessages(context.Background(), msg)
+
+	log.Println("Write data")
 
 	if err != nil {
 		log.Println("Kafka Write Message Error", err.Error())
@@ -49,14 +53,21 @@ func HandlePost(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Ok"))
 }
 
-func getKafkaWriter(kafkaURL, topic string) *kafka.Conn {
-	conn, err := kafka.DialLeader(context.Background(), "tcp", kafkaURL, topic, 0)
+// func getKafkaWriter(kafkaURL, topic string) *kafka.Conn {
+// 	conn, err := kafka.DialLeader(context.Background(), "tcp", kafkaURL, topic, 0)
 
-	if err != nil {
-		log.Panic("Connection Err", err)
-	}
+// 	if err != nil {
+// 		log.Panic("Connection Err", err)
+// 	}
 
-	return conn
+// 	return conn
+// }
+
+func getKafkaWriter(kafkaURL, topic string) *kafka.Writer {
+	return kafka.NewWriter(kafka.WriterConfig{
+		Brokers: []string{kafkaURL},
+		Topic:   topic,
+	})
 }
 
 func main() {
